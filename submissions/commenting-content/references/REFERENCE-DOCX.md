@@ -6,9 +6,13 @@ When the attached file is a `.docx`, follow these steps:
 2. Identify locations throughout the document that would benefit from a native Word comment — including unsupported assertions, unclear statements, missing context, outdated information, contradictions, or places where a citation would strengthen the content.
 3. Research the document's topic using any available sources — including internal documents, emails, Microsoft Teams messages, approved knowledge sources, and web research tools — to gather relevant facts, definitions, recent updates, and citations.
 4. **Before authoring `comments.json`, extract raw paragraph text directly from the document XML** to find exact verbatim strings. Unzip the .docx and read `word/document.xml` — do not rely on what a rendered viewer shows. This is the only way to capture curly/smart quotes (`""`), curly apostrophes (`'`), em dashes, and other typographic characters exactly as they appear in the file.
+
+   > ⚠️ **`doc.paragraphs` does not include table cells.** python-docx's `doc.paragraphs` only iterates paragraphs directly in the main document body (`<w:body>`); paragraphs nested inside table cells (`<w:tbl>` → `<w:tr>` → `<w:tc>` → `<w:p>`) are silently excluded, with no error. If the document contains tables, you must **also** iterate `doc.tables` → each `row.cells` → each `cell.paragraphs` to reach text (and tracked changes like `w:ins` / `w:del`) inside table cells — or bypass python-docx entirely and use lxml's `body.iter(w("p"))` on the raw XML, which finds **all** `<w:p>` elements regardless of nesting depth (this is what the inject script already does). Relying solely on `doc.paragraphs` will silently miss any content inside table cells.
 5. Author a `comments.json` file for `scripts/inject-comments-docx.py`. It is a JSON array of objects, each with the keys `id`, `search_phrase`, and `paragraphs`:
    - `id` — a unique integer starting at 0
-   - `search_phrase` — **always choose a portion of the target paragraph that contains no quotes or apostrophes.** This is a hard rule: curly/smart quotes (`""`), curly apostrophes (`'`), and their straight equivalents (`"`, `'`) will silently fail to match if there is any character mismatch in the raw XML. The safest and confirmed fix is to simply avoid them — pick plain words from the same paragraph instead.
+   - `search_phrase` — **must appear exactly once in the document, and must contain no quotes or apostrophes.** Two hard rules:
+     - **Uniqueness:** before using a phrase, verify it occurs exactly once in the document. If a document has repeated stories, boilerplate, or duplicate paragraphs, a generic phrase will silently match the *first* occurrence — anchoring the comment to the wrong paragraph (e.g. one with no tracked change), so it never appears where intended. When commenting on a tracked change, prefer text from the change itself (inserted `w:ins` text is still captured by `iter(w("t"))`) or a phrase from the immediately surrounding *unique* context.
+     - **No quotes/apostrophes:** curly/smart quotes (`""`), curly apostrophes (`'`), and their straight equivalents (`"`, `'`) will silently fail to match if there is any character mismatch in the raw XML. The safest and confirmed fix is to simply avoid them — pick plain words from the same paragraph instead.
    - `paragraphs` — a list of strings; each string becomes a separate paragraph inside the Word comment. Start each comment with the appropriate emoji:
      - 💡 when adding context, a definition, a citation, a relevant update, or a suggested improvement
      - 🧹 when flagging an inaccuracy, ambiguity, contradiction, missing information, or something that needs cleanup
@@ -57,15 +61,13 @@ The script (`scripts/inject-comments-docx.py`) is the injection engine. It:
 
 ## Guidelines
 
+- **Never alter the author's original wording — flag issues in a comment instead.** The script only adds comments; it must never edit, delete, or rewrite the document body.
 - Use the Copilot Studio Analyze skill first before researching so you understand the full document before authoring `comments.json`.
 - Only add comments where they genuinely help — do not comment on every sentence.
-- **Always extract raw paragraph text from `word/document.xml`** before writing search phrases — never guess based on rendered output.
-- Make `search_phrase` values short and unique within the document so the script anchors comments to the correct paragraph.
-- **Never include quotes or apostrophes in a search phrase — this is a hard rule.** A confirmed real failure: smart/curly quotes in the document (`""`, `'`) silently fail to match when straight quotes (`"`, `'`) are used, and vice versa. The fix is to always pick a nearby plain-word portion of the same paragraph that contains no quotes or apostrophes at all.
-- **Run the injection script exactly once**, from the original input file, with all comments in a single pass. Never re-run against a previously produced output file.
 - Comments should be factual, concise, and sourced when possible.
-- Never alter the author's original wording — flag issues in a comment instead.
 - If the document topic is outside available knowledge sources, note that in the summary and recommend the author seek a subject matter expert.
+
+> The hard rules for extraction and `search_phrase` (raw-XML text, uniqueness, no quotes/apostrophes) and the run-once rule are defined in Steps 4–8 above — they are not repeated here.
 
 ## Examples
 
