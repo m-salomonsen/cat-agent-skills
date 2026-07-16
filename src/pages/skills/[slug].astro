@@ -32,13 +32,18 @@ const { skill } = Astro.props;
 const d = skill.data;
 const isPlugin = d.type === "plugin";
 const isAutomation = d.type === "automation";
+// An automation whose bundle is a `.zip` is an installer (an INSTALL.md + JSON
+// config files) rather than a directly-importable `.json`.
+const isInstaller = isAutomation && Boolean(d.bundle?.endsWith(".zip"));
 const noun = isPlugin ? "plugin" : isAutomation ? "automation" : "skill";
 const { Content } = await render(skill);
 
-// For automations, parse the published `.json` at build time so we can render
-// its trigger + prompt steps as structured UI instead of raw markdown.
+// For importable `.json` automations, parse the published file at build time so
+// we can render its trigger + prompt steps as structured UI instead of raw
+// markdown. Installer `.zip` automations have no schedule/steps — their
+// INSTALL.md is rendered as the body via <Content /> below.
 let automation: AutomationDigest | null = null;
-if (isAutomation && d.bundle) {
+if (isAutomation && d.bundle && d.bundle.endsWith(".json")) {
   try {
     const raw = readFileSync(join(process.cwd(), "public", d.bundle), "utf8");
     const res = validateAutomationData(JSON.parse(raw), skill.id);
@@ -89,6 +94,7 @@ if (updated && updated !== created) meta.push(["Updated", updated]);
         coverColor={d.coverColor}
         hasBundle={Boolean(d.bundle)}
         type={d.type}
+        isInstaller={isInstaller}
         variant="hero"
       />
     </div>
@@ -259,6 +265,8 @@ if (updated && updated !== created) meta.push(["Updated", updated]);
             {
               isPlugin
                 ? "Download the plugin package and install it in Microsoft 365 Copilot Cowork."
+                : isInstaller
+                ? "Download the installer (.zip), unzip it, and follow INSTALL.md \u2014 Microsoft Scout creates the automation for you."
                 : isAutomation
                 ? "Download the automation and import it into Microsoft Scout (Automations \u203a Import)."
                 : `Download the ${
@@ -335,10 +343,10 @@ if (updated && updated !== created) meta.push(["Updated", updated]);
                 d.bundle && (
                   <a
                     href={withBase(`/${d.bundle}`)}
-                    download={`${skill.id}.json`}
+                    download={isInstaller ? `${skill.id}.zip` : `${skill.id}.json`}
                     data-clarity-event="skill_download"
                     data-clarity-skill={skill.id}
-                    data-clarity-download-type="automation"
+                    data-clarity-download-type={isInstaller ? "automation-installer" : "automation"}
                     data-download-gated
                     aria-disabled="true"
                     class="flex items-center justify-center gap-2 rounded-lg bg-accent px-4 py-2.5 text-sm font-semibold text-accent-fg hover:opacity-90 transition-opacity pointer-events-none opacity-50 cursor-not-allowed"
@@ -357,7 +365,7 @@ if (updated && updated !== created) meta.push(["Updated", updated]);
                         stroke-linejoin="round"
                       />
                     </svg>
-                    Download automation (.json)
+                    {isInstaller ? "Download automation installer (.zip)" : "Download automation (.json)"}
                   </a>
                 )
               ) : (

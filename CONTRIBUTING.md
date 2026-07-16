@@ -68,6 +68,25 @@ and see the
 [Scout automations section](submissions/README.md#scout-automations-advanced) of
 the submissions reference for the required shape and validation rules.
 
+### Scout automation installers
+
+Some automations aren't a directly-importable `.json` but an **installer**: a
+`.zip` you download, unzip, and follow to set the automation up (for example, an
+agent reads the instructions, gathers your settings, and calls
+`m_create_automation`). Submit one as a `submissions/<slug>/` folder with a
+`metadata.json` sidecar plus a single `.zip` containing an **`INSTALL.md`**
+(the install procedure + the automation prompt) and one or more **JSON config
+files** the automation consumes. It's auto-detected as an automation installer
+because the `.zip` holds an `INSTALL.md` + JSON (and no root `SKILL.md` or
+`manifest.json`). The `.zip` is published **verbatim** and offered as a `.zip`
+download; the detail page renders your `INSTALL.md`. Validation is minimal —
+just that the `INSTALL.md` and at least one JSON file are present (the config
+JSON is **not** schema-checked). Copy
+[`submissions/_template-automation-installer/`](submissions/_template-automation-installer)
+to start and see the
+[Scout automation installers section](submissions/README.md#scout-automation-installers-advanced)
+of the submissions reference.
+
 ## Two descriptions
 
 A skill carries **two** descriptions, on purpose:

@@ -13,6 +13,8 @@ interface Props {
   author?: string;
   coverColor?: string;
   hasBundle?: boolean;
+  /** True when an automation ships as an installer `.zip` (vs an importable `.json`). */
+  isInstaller?: boolean;
   rating?: number;
 }
 
@@ -26,6 +28,7 @@ const {
   author,
   coverColor,
   hasBundle = false,
+  isInstaller = false,
   rating = 0,
 } = Astro.props;
 
@@ -140,7 +143,7 @@ const wrapperProps = isInteractive
     <span class="flex shrink-0 items-center gap-2.5 text-xs text-subtle">
       {
         hasBundle && (
-          <span class="flex items-center gap-1" title={isAutomation ? "Includes a downloadable automation file" : "Includes a downloadable bundle"}>
+          <span class="flex items-center gap-1" title={isInstaller ? "Includes a downloadable automation installer" : isAutomation ? "Includes a downloadable automation file" : "Includes a downloadable bundle"}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 24 24"
@@ -149,7 +152,7 @@ const wrapperProps = isInteractive
             >
               <path d="M3 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z" />
             </svg>
-            {isAutomation ? ".json" : ".zip"}
+            {isAutomation && !isInstaller ? ".json" : ".zip"}
           </span>
         )
       }
