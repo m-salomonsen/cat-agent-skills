@@ -219,6 +219,7 @@ const allTags = [...tagCounts.entries()].sort(
               author={skill.data.author}
               coverColor={skill.data.coverColor}
               hasBundle={Boolean(skill.data.bundle)}
+              isInstaller={skill.data.type === "automation" && Boolean(skill.data.bundle?.endsWith(".zip"))}
               rating={getRating(skill.id)}
             />
           </div>
