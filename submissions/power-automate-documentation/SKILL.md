@@ -18,7 +18,7 @@ You are producing a **technical reference document** for a Power Automate soluti
 An unpacked solution zip has this shape:
 
 - **`solution.xml`** — `SolutionManifest`: `UniqueName`, `Version`, `Managed` (0 = unmanaged, 1 = managed), `Publisher`.
-- **`customizations.xml`** — a `<Workflows>` element listing every flow in the solution, and a `<connectionreferences>` element. `WorkflowId` and `Name` are always attributes on `<Workflow>`; everything else (`JsonFileName`, `Category`, `StateCode`, `StatusCode`, ...) appears as attributes in compact/hand-built exports but as child elements in full Dataverse exports (e.g. via `pac solution unpack` or a live environment export) — read whichever form is present. When `StateCode`/`StatusCode` are present, `0`/`1` typically means the flow is Draft (off) and `1`/`2` typically means it's Activated (on) — worth a one-line note per flow, phrased as "typically" since exact codes can vary by environment. `<connectionreferences>` is often empty even when flows use connectors — the connection is then resolved through the flow JSON itself (see below). Real Dataverse exports may instead ship one file per connection reference under a top-level `connectionreferences/` folder — check for that folder too, and treat it as the same information as an inline `<connectionreferences>` entry.
+- **`customizations.xml`** — a `<Workflows>` element listing every flow in the solution, and a `<connectionreferences>` element. `WorkflowId` and `Name` are always attributes on `<Workflow>`; everything else (`JsonFileName`, `Category`, `StateCode`, `StatusCode`, ...) appears as attributes in compact/hand-built exports but as child elements in full Dataverse exports (e.g. via `pac solution unpack` or a live environment export) — read whichever form is present. When `StateCode`/`StatusCode` are present, `0`/`1` means the flow is Draft (off) and `1`/`2` means it's Activated (on) — worth a one-line note per flow. `<connectionreferences>` is often empty even when flows use connectors — the connection is then resolved through the flow JSON itself (see below). Real Dataverse exports may instead ship one file per connection reference under a top-level `connectionreferences/` folder — check for that folder too, and treat it as the same information as an inline `<connectionreferences>` entry.
 - **`Workflows/*.json`** — one file per flow, keyed at `properties.definition.triggers` and `properties.definition.actions`, using the standard Logic Apps workflow-definition schema. Full exports also carry `properties.connectionReferences` — see below.
 
 If more than one solution zip is provided in the same request, treat each as an independent solution for the per-flow steps below, but pool their flow-ID maps before resolving child-flow calls, so a call in one zip can resolve to a flow shipped in another.
@@ -76,12 +76,11 @@ A `Request`/`manual` trigger with `kind: "Button"` means the flow itself is call
 
 Only connector calls, HTTP calls, connector-based triggers, and flow-management calls count as data access.
 
-1. If the connector is SharePoint, Dataverse, SQL Server, Outlook/Office 365, Teams, OneDrive/Excel, Approvals, Flow Management, or Word Online, check `references/connector-operations.md` first — several of their operation IDs (`PatchItem`, `ListRecords`, `InsertRow`, `GetFlow`...) don't match the plain-verb pattern below.
-2. Otherwise, match `operationId` (or the action name, if missing) against these verbs: **Read** = Get, List, Search, Find; **Write** = Create, Add, Post, Insert, New, Update, Patch, Edit, Set, Replace, Send, Upload, Run, Trigger; **Delete** = Delete, Remove.
-3. `Http` actions: `GET`→Read, `POST`/`PUT`/`PATCH`→Write, `DELETE`→Delete.
-4. A connector trigger (webhook or polling) is **Read** — the flow is consuming an inbound record or event — unless the operation clearly creates something.
-5. Actions that send a message or notification (email, Teams post, approval request) have nothing in the flow to read back — label them **Write (send)** rather than omitting them.
-6. If an operation genuinely doesn't match anything above (a custom connector with an opaque name), say so explicitly in the output — "Access unclear from operationId `{name}`" — rather than guessing.
+1. Match `operationId` (or the action name, if missing) against these verbs: **Read** = Get, List, Search, Find; **Write** = Create, Add, Post, Insert, New, Update, Patch, Edit, Set, Replace, Send, Upload, Run, Trigger; **Delete** = Delete, Remove.
+2. `Http` actions: `GET`→Read, `POST`/`PUT`/`PATCH`→Write, `DELETE`→Delete.
+3. connector trigger (webhook or polling) is **Read** — the flow is consuming an inbound record or event — unless the operation clearly creates something.
+4. Actions that send a message or notification (email, Teams post, approval request) have nothing in the flow to read back — label them **Write (send)** rather than omitting them.
+5. If an operation genuinely doesn't match anything above (a custom connector with an opaque name), say so explicitly in the output — "Access unclear from operationId `{name}`" — rather than guessing.
 
 Collapse Create/Update/Send into **Write** in the output table, keeping the specific verb in parentheses: `Write (create)`, `Write (update)`, `Write (send)`.
 
@@ -107,7 +106,7 @@ For each flow, count: how many lines were in your action inventory? Now check yo
 
 ## Output Template
 
-One Markdown document per solution zip. Solution-level overview first, then one `##` section per flow.
+The output should be one Markdown document per solution zip. Solution-level overview first, then one `##` section per flow, following this strict format
 
 ```markdown
 # {Solution unique name} — Flow Documentation
@@ -150,45 +149,6 @@ One Markdown document per solution zip. Solution-level overview first, then one 
 ### Interacts with other flows
 - **Calls:** {resolved child-flow / flow-management names, or "None."}
 - **Called by:** {flow names found across the solution(s) provided, or "None found in this solution — it may still be run manually, from Power Apps, or from a flow outside the zip(s) provided."}
-```
-
-## Worked Example
-
-A flow with a `City` input, an HTTP call, and a SharePoint read — inventory first, then the finished sections:
-
-```
-Inventory:
-1. Trigger: manual (Request/Button) — City
-2. HTTP_Get_Weather
-3. Get_items
-4. Compose_Forecast
-(4 entries — flat flow, no branching, matches the top-level action count)
-```
-
-```markdown
-### Trigger
-Instant (Request/Button). Input: `City` (string, required).
-
-### Process
-1. **HTTP_Get_Weather** calls an external weather API for the given city (defaults to "London" if not supplied).
-2. **Get_items** reads the `Cities` list from the `contoso.sharepoint.com/sites/ops` SharePoint site.
-3. **Compose_Forecast** builds a summary string combining the city, the HTTP response, and a fallback message if no weather data came back.
-
-### Connection references
-| Connector | Connection name | Binding | Used by |
-|---|---|---|---|
-| SharePoint | shared_sharepointonline | embedded | Get_items |
-
-### Data access
-| Action | System / entity | Access |
-|---|---|---|
-| Get_items | SharePoint: contoso.sharepoint.com/sites/ops → Cities | Read |
-| HTTP_Get_Weather | api.example.com/weather (external HTTP) | Read |
-
-### Interacts with other flows
-- **Calls:** None.
-- **Called by:** None found in this solution — it may still be run manually, from Power Apps, or from a flow outside the zip(s) provided.
-```
 
 All 4 inventory lines are accounted for: 2 in Process only (Compose_Forecast is data-shaping, HTTP_Get_Weather also appears in External HTTP — folded into Data access here since it's the flow's only HTTP call), 1 trigger described, 1 in Data access. Nothing was dropped.
 
