@@ -151,8 +151,7 @@ The output should be one Markdown document per solution zip. Solution-level over
 - **Called by:** {flow names found across the solution(s) provided, or "None found in this solution — it may still be run manually, from Power Apps, or from a flow outside the zip(s) provided."}
 ```
 
-All 4 inventory lines are accounted for: 2 in Process only (Compose_Forecast is data-shaping, HTTP_Get_Weather also appears in External HTTP — folded into Data access here since it's the flow's only HTTP call), 1 trigger described, 1 in Data access. Nothing was dropped.
-
+Example reconciliation (hypothetical): every inventoried trigger/action should be referenced somewhere in the write-up (Process narrative, Data access, External HTTP calls, or Connection references). Nothing should be dropped.
 
 ## Workflow
 
